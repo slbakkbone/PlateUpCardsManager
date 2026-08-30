@@ -91,11 +91,15 @@ namespace KitchenCardsManager.Customs
     }
 
     // Prioritizes first card not matching group, prioritizes second card matching group
-    internal class UnlockSelectorOtherPlusGroupChoice : IUnlockSelector
+    internal class UnlockSelectorOtherPlusGroupChoice : UnlockSelector
     {
         internal UnlockGroup Group;
 
-        public UnlockOptions GetOptions(List<Unlock> candidates, HashSet<int> current_cards, UnlockRequest request)
+        // Game v1.4.4+ changed IUnlockSelector from an interface to an abstract class (UnlockSelector),
+        // and added a 4th GetOptions parameter, skip_choices. The base class uses it (via the protected
+        // GetOffsetChoice helper) to page through candidates for rerolls: offset = skip_choices * 2 (+1).
+        // This selector keeps its original single-pick behavior and simply ignores skip_choices for now.
+        public override UnlockOptions GetOptions(List<Unlock> candidates, HashSet<int> current_cards, UnlockRequest request, int skip_choices)
         {
             UnlockOptions result = default(UnlockOptions);
             for (int i = 0; i < candidates.Count; i++)
