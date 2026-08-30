@@ -573,6 +573,32 @@ namespace KitchenCardsManager.Patches
 
         static ActiveCardsCache Cache = new ActiveCardsCache();
 
+        // Game v1.4.4+ changed the pause menu's native "Active Cards" entry point to open
+        // Kitchen.CardListMenu instead of a CardScrollerElement-hosting menu, so none of this
+        // file's patches fired there anymore. CardListMenu's own rendering (via
+        // Kitchen.Modules.DeckViewerElement) shows cards in a grid with no enable/disable/remove
+        // support and no clear "selected card" indicator we can hook cleanly - so instead of
+        // grafting our logic onto it, we skip CardListMenu's native Setup entirely and reuse
+        // the exact same working mechanism as the "Edit Cards" Preferences menu
+        // (Main.CardsManagerScrollerMenu): spawn a real CardScrollerElement into this screen's
+        // own Container/ModuleList. Leaving MenuOpenedFromModPreferences/IsCardManagerMode
+        // false keeps SetIndex_Postfix on the vanilla "active cards" branch
+        // (ActiveCards_DisplayTweak), which already supports hold-to-remove via
+        // HandleReadyButtonHold and has a real selected-card indicator.
+        [HarmonyPatch(typeof(CardListMenu), "Setup")]
+        [HarmonyPrefix]
+        private static bool CardListMenu_Setup_Prefix(int player_id, Transform ___Container, ModuleList ___ModuleList)
+        {
+            MenuOpenedFromModPreferences = false;
+            IsCardManagerMode = false;
+
+            CardScrollerElement cardScrollerElement = ModuleDirectory.Add<CardScrollerElement>(___Container, new Vector2(0f, 0f));
+            cardScrollerElement.SetCardList(GameInfo.AllCurrentCards);
+            ___ModuleList.AddModule(cardScrollerElement, cardScrollerElement.transform.localPosition.ToFlat());
+
+            return false;
+        }
+
         [HarmonyPatch(typeof(CardScrollerElement), "SetIndex")]
         [HarmonyPrefix]
         private static bool SetIndex_Prefix()
